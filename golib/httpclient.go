@@ -154,7 +154,7 @@ func (c *HTTPClient) HTTPGetWithRes(url string, data *[]byte) (*http.Response, e
 		return res, errors.New(res.Status)
 	}
 
-	*data = c.responseToBArray(res)
+	*data = c.ResponseToBArray(res)
 
 	return res, nil
 }
@@ -181,7 +181,7 @@ func (c *HTTPClient) HTTPPostWithRes(url string, body string) (*http.Response, e
 	return res, nil
 }
 
-func (c *HTTPClient) responseToBArray(response *http.Response) []byte {
+func (c *HTTPClient) ResponseToBArray(response *http.Response) []byte {
 	defer response.Body.Close()
 	bytes, err := ioutil.ReadAll(response.Body)
 	if err != nil {
@@ -242,11 +242,11 @@ csrffound:
 	} else if response.StatusCode != 200 {
 		data := make(map[string]interface{})
 		// Try to decode error field of APIError struct
-		json.Unmarshal(c.responseToBArray(response), &data)
+		json.Unmarshal(c.ResponseToBArray(response), &data)
 		if err, found := data["error"]; found {
 			return nil, fmt.Errorf(err.(string))
 		} else {
-			body := strings.TrimSpace(string(c.responseToBArray(response)))
+			body := strings.TrimSpace(string(c.ResponseToBArray(response)))
 			if body != "" {
 				return nil, fmt.Errorf(body)
 			}
