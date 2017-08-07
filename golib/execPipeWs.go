@@ -15,16 +15,16 @@ import (
 )
 
 // EmitOutputCB is the function callback used to emit data
-type EmitOutputCB func(sid string, cmdID int, stdout, stderr string, data *map[string]interface{})
+type EmitOutputCB func(sid string, cmdID string, stdout, stderr string, data *map[string]interface{})
 
 // EmitExitCB is the function callback used to emit exit proc code
-type EmitExitCB func(sid string, cmdID int, code int, err error, data *map[string]interface{})
+type EmitExitCB func(sid string, cmdID string, code int, err error, data *map[string]interface{})
 
 // Inspired by :
 // https://github.com/gorilla/websocket/blob/master/examples/command/main.go
 
 // ExecPipeWs executes a command and redirect stdout/stderr into a WebSocket
-func ExecPipeWs(cmd []string, env []string, so *socketio.Socket, sid string, cmdID int,
+func ExecPipeWs(cmd []string, env []string, so *socketio.Socket, sid string, cmdID string,
 	cmdExecTimeout int, log *logrus.Logger, eoCB EmitOutputCB, eeCB EmitExitCB, data *map[string]interface{}) error {
 
 	outr, outw, err := os.Pipe()
@@ -94,7 +94,7 @@ func ExecPipeWs(cmd []string, env []string, so *socketio.Socket, sid string, cmd
 }
 
 func cmdPumpStdin(so *socketio.Socket, w io.Writer, proc *os.Process,
-	sid string, cmdID int, tmo int, log *logrus.Logger, exitFuncCB EmitExitCB,
+	sid string, cmdID string, tmo int, log *logrus.Logger, exitFuncCB EmitExitCB,
 	data *map[string]interface{}) {
 	/* XXX - code to add to support stdin through WS
 	for {
@@ -136,7 +136,7 @@ func cmdPumpStdin(so *socketio.Socket, w io.Writer, proc *os.Process,
 }
 
 func cmdPumpStdout(so *socketio.Socket, r io.Reader, done chan struct{},
-	sid string, cmdID int, log *logrus.Logger, emitFuncCB EmitOutputCB, data *map[string]interface{}) {
+	sid string, cmdID string, log *logrus.Logger, emitFuncCB EmitOutputCB, data *map[string]interface{}) {
 	defer func() {
 	}()
 
