@@ -65,7 +65,7 @@ func ResolveEnvVar(s string) (string, error) {
 	return path.Clean(res), nil
 }
 
-// PathNormalize
+// PathNormalize normalizes a linux or windows like path
 func PathNormalize(p string) string {
 	sep := string(filepath.Separator)
 	if sep != "/" {

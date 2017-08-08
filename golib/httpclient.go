@@ -13,6 +13,7 @@ import (
 	"github.com/Sirupsen/logrus"
 )
 
+// HTTPClient .
 type HTTPClient struct {
 	httpClient http.Client
 	endpoint   string
@@ -25,6 +26,7 @@ type HTTPClient struct {
 	logger     *logrus.Logger
 }
 
+// HTTPClientConfig is used to config HTTPClient
 type HTTPClientConfig struct {
 	URLPrefix           string
 	HeaderAPIKeyName    string
@@ -181,6 +183,7 @@ func (c *HTTPClient) HTTPPostWithRes(url string, body string) (*http.Response, e
 	return res, nil
 }
 
+// ResponseToBArray converts an Http response to a byte array
 func (c *HTTPClient) ResponseToBArray(response *http.Response) []byte {
 	defer response.Body.Close()
 	bytes, err := ioutil.ReadAll(response.Body)
@@ -245,11 +248,10 @@ csrffound:
 		json.Unmarshal(c.ResponseToBArray(response), &data)
 		if err, found := data["error"]; found {
 			return nil, fmt.Errorf(err.(string))
-		} else {
-			body := strings.TrimSpace(string(c.ResponseToBArray(response)))
-			if body != "" {
-				return nil, fmt.Errorf(body)
-			}
+		}
+		body := strings.TrimSpace(string(c.ResponseToBArray(response)))
+		if body != "" {
+			return nil, fmt.Errorf(body)
 		}
 		return nil, errors.New("Unknown HTTP status returned: " + response.Status)
 	}
