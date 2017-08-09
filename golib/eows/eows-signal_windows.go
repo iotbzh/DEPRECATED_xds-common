@@ -2,12 +2,8 @@ package eows
 
 // +build windows
 
-import (
-	"fmt"
-)
-
 // Signal sends a signal to the running command / process
-func Signal(signal string) error {
+func (e *ExecOverWS) Signal(signal string) error {
 	panic("FIXME: Not implemented")
 	/*
 			var sig os.Signal
