@@ -23,6 +23,18 @@ func Exists(path string) bool {
 	return true
 }
 
+// IsDir returns true when the given path is a directory
+func IsDir(path string) bool {
+	fi, err := os.Stat(path)
+	if err != nil {
+		dd
+		fmt.Printf("SEB %v", path)
+		return false
+	}
+
+	return fi.Mode().IsDir()
+}
+
 // ResolveEnvVar Resolved environment variable regarding the syntax ${MYVAR}
 // or $MYVAR following by a slash or a backslash
 func ResolveEnvVar(s string) (string, error) {
