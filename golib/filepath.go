@@ -27,8 +27,6 @@ func Exists(path string) bool {
 func IsDir(path string) bool {
 	fi, err := os.Stat(path)
 	if err != nil {
-		dd
-		fmt.Printf("SEB %v", path)
 		return false
 	}
 
