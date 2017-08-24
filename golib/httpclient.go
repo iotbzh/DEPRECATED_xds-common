@@ -6,15 +6,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
-
-	"github.com/Sirupsen/logrus"
 )
 
 // HTTPClient .
 type HTTPClient struct {
+	LoggerOut   io.Writer
+	LoggerLevel int
+
 	httpClient http.Client
 	endpoint   string
 	apikey     string
@@ -23,7 +26,6 @@ type HTTPClient struct {
 	id         string
 	csrf       string
 	conf       HTTPClientConfig
-	logger     *logrus.Logger
 }
 
 // HTTPClientConfig is used to config HTTPClient
@@ -36,10 +38,11 @@ type HTTPClientConfig struct {
 }
 
 const (
-	logError   = 1
-	logWarning = 2
-	logInfo    = 3
-	logDebug   = 4
+	HTTPLogLevelNo      = 0
+	HTTPLogLevelError   = 1
+	HTTPLogLevelWarning = 2
+	HTTPLogLevelInfo    = 3
+	HTTPLogLevelDebug   = 4
 )
 
 // Inspired by syncthing/cmd/cli
@@ -58,6 +61,9 @@ func HTTPNewClient(baseURL string, cfg HTTPClientConfig) (*HTTPClient, error) {
 		},
 	}
 	client := HTTPClient{
+		LoggerOut:   os.Stdout,
+		LoggerLevel: HTTPLogLevelError,
+
 		httpClient: httpClient,
 		endpoint:   baseURL,
 		apikey:     cfg.Apikey,
@@ -76,27 +82,24 @@ func HTTPNewClient(baseURL string, cfg HTTPClientConfig) (*HTTPClient, error) {
 	return &client, nil
 }
 
-// SetLogger Define the logger to use
-func (c *HTTPClient) SetLogger(log *logrus.Logger) {
-	c.logger = log
-}
-
 func (c *HTTPClient) log(level int, format string, args ...interface{}) {
-	if c.logger != nil {
-		switch level {
-		case logError:
-			c.logger.Errorf(format, args...)
-			break
-		case logWarning:
-			c.logger.Warningf(format, args...)
-			break
-		case logInfo:
-			c.logger.Infof(format, args...)
-			break
-		default:
-			c.logger.Debugf(format, args...)
-			break
-		}
+	if level > c.LoggerLevel {
+		return
+	}
+
+	switch level {
+	case HTTPLogLevelError:
+		fmt.Fprintf(c.LoggerOut, "ERROR: "+format+"\n", args...)
+		break
+	case HTTPLogLevelWarning:
+		fmt.Fprintf(c.LoggerOut, "WARNING: "+format+"\n", args...)
+		break
+	case HTTPLogLevelInfo:
+		fmt.Fprintf(c.LoggerOut, "INFO: "+format+"\n", args...)
+		break
+	default:
+		fmt.Fprintf(c.LoggerOut, "DEBUG: "+format+"\n", args...)
+		break
 	}
 }
 
@@ -208,9 +211,10 @@ func (c *HTTPClient) handleRequest(request *http.Request) (*http.Response, error
 		request.Header.Set("X-CSRF-Token-"+c.id[:5], c.csrf)
 	}
 
-	c.log(logDebug, "HTTP %s %v", request.Method, request.URL)
+	c.log(HTTPLogLevelDebug, "HTTP %s %v", request.Method, request.URL)
 
 	response, err := c.httpClient.Do(request)
+	c.log(HTTPLogLevelDebug, "HTTP RESPONSE: %v\n", response)
 	if err != nil {
 		return nil, err
 	}
