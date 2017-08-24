@@ -15,8 +15,9 @@ import (
 
 // HTTPClient .
 type HTTPClient struct {
-	LoggerOut   io.Writer
-	LoggerLevel int
+	LoggerOut    io.Writer
+	LoggerLevel  int
+	LoggerPrefix string
 
 	httpClient http.Client
 	endpoint   string
@@ -38,7 +39,7 @@ type HTTPClientConfig struct {
 }
 
 const (
-	HTTPLogLevelNo      = 0
+	HTTPLogLevelPanic   = 0
 	HTTPLogLevelError   = 1
 	HTTPLogLevelWarning = 2
 	HTTPLogLevelInfo    = 3
@@ -61,8 +62,9 @@ func HTTPNewClient(baseURL string, cfg HTTPClientConfig) (*HTTPClient, error) {
 		},
 	}
 	client := HTTPClient{
-		LoggerOut:   os.Stdout,
-		LoggerLevel: HTTPLogLevelError,
+		LoggerOut:    os.Stdout,
+		LoggerLevel:  HTTPLogLevelError,
+		LoggerPrefix: "",
 
 		httpClient: httpClient,
 		endpoint:   baseURL,
@@ -82,25 +84,48 @@ func HTTPNewClient(baseURL string, cfg HTTPClientConfig) (*HTTPClient, error) {
 	return &client, nil
 }
 
+// GetLogLevel Get a readable string representing the log level
+func (c *HTTPClient) GetLogLevel() string {
+	switch c.LoggerLevel {
+	case HTTPLogLevelPanic:
+		return "panic"
+	case HTTPLogLevelError:
+		return "error"
+	case HTTPLogLevelWarning:
+		return "warning"
+	case HTTPLogLevelInfo:
+		return "info"
+	case HTTPLogLevelDebug:
+		return "debug"
+	}
+	return "Unknown"
+}
+
+// SetLogLevel set the log level from a readable string
+func (c *HTTPClient) SetLogLevel(lvl string) error {
+	switch strings.ToLower(lvl) {
+	case "panic":
+		c.LoggerLevel = HTTPLogLevelPanic
+	case "error":
+		c.LoggerLevel = HTTPLogLevelError
+	case "warn", "warning":
+		c.LoggerLevel = HTTPLogLevelWarning
+	case "info":
+		c.LoggerLevel = HTTPLogLevelInfo
+	case "debug":
+		c.LoggerLevel = HTTPLogLevelDebug
+	default:
+		return fmt.Errorf("Unknown level")
+	}
+	return nil
+}
+
 func (c *HTTPClient) log(level int, format string, args ...interface{}) {
 	if level > c.LoggerLevel {
 		return
 	}
-
-	switch level {
-	case HTTPLogLevelError:
-		fmt.Fprintf(c.LoggerOut, "ERROR: "+format+"\n", args...)
-		break
-	case HTTPLogLevelWarning:
-		fmt.Fprintf(c.LoggerOut, "WARNING: "+format+"\n", args...)
-		break
-	case HTTPLogLevelInfo:
-		fmt.Fprintf(c.LoggerOut, "INFO: "+format+"\n", args...)
-		break
-	default:
-		fmt.Fprintf(c.LoggerOut, "DEBUG: "+format+"\n", args...)
-		break
-	}
+	sLvl := strings.ToUpper(c.GetLogLevel())
+	fmt.Fprintf(c.LoggerOut, sLvl+": "+c.LoggerPrefix+format+"\n", args...)
 }
 
 // Send request to retrieve Client id and/or CSRF token
@@ -191,8 +216,7 @@ func (c *HTTPClient) ResponseToBArray(response *http.Response) []byte {
 	defer response.Body.Close()
 	bytes, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		// TODO improved error reporting
-		fmt.Println("ERROR: " + err.Error())
+		c.log(HTTPLogLevelError, "ResponseToBArray failure: %v", err.Error())
 	}
 	return bytes
 }
@@ -212,10 +236,13 @@ func (c *HTTPClient) handleRequest(request *http.Request) (*http.Response, error
 	}
 
 	c.log(HTTPLogLevelDebug, "HTTP %s %v", request.Method, request.URL)
-
 	response, err := c.httpClient.Do(request)
 	c.log(HTTPLogLevelDebug, "HTTP RESPONSE: %v\n", response)
 	if err != nil {
+		if c.LoggerLevel != HTTPLogLevelDebug {
+			c.log(HTTPLogLevelError, "HTTP %s %v", request.Method, request.URL)
+			c.log(HTTPLogLevelError, "HTTP RESPONSE: %v\n", response)
+		}
 		return nil, err
 	}
 
