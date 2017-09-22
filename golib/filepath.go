@@ -52,15 +52,34 @@ func ResolveEnvVar(s string) (string, error) {
 	vars := re.FindAllStringSubmatch(s, -1)
 	res := s
 	for _, v := range vars {
-		val := os.Getenv(v[1])
-		if val == "" {
-			// Specific case to resolved $HOME or ${HOME} on Windows host
-			if runtime.GOOS == "windows" && v[1] == "HOME" {
-				if usr, err := user.Current(); err == nil {
-					val = usr.HomeDir
+		val := ""
+		if v[1] == "EXEPATH" {
+			// Specific case to resolve $EXEPATH or ${EXEPATH} used as current executable path
+			exePath := os.Args[0]
+			ee, _ := os.Executable()
+			exeAbsPath, err := filepath.Abs(ee)
+			if err == nil {
+				exePath, err = filepath.EvalSymlinks(exeAbsPath)
+				if err == nil {
+					exePath = filepath.Dir(ee)
+				} else {
+					exePath = filepath.Dir(exeAbsPath)
 				}
-			} else {
-				return res, fmt.Errorf("ERROR: %s env variable not defined", v[1])
+			}
+			val = exePath
+
+		} else {
+			// Get env var value
+			val = os.Getenv(v[1])
+			if val == "" {
+				// Specific case to resolved $HOME or ${HOME} on Windows host
+				if runtime.GOOS == "windows" && v[1] == "HOME" {
+					if usr, err := user.Current(); err == nil {
+						val = usr.HomeDir
+					}
+				} else {
+					return res, fmt.Errorf("ERROR: %s env variable not defined", v[1])
+				}
 			}
 		}
 
