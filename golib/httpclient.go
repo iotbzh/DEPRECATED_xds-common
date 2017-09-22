@@ -254,7 +254,7 @@ func (c *HTTPClient) handleRequest(request *http.Request) (*http.Response, error
 
 	// Detect CSR token change
 	for _, item := range response.Cookies() {
-		if item.Name == "CSRF-Token-"+c.id[:5] {
+		if c.id != "" && item.Name == "CSRF-Token-"+c.id[:5] {
 			c.csrf = item.Value
 			goto csrffound
 		}
