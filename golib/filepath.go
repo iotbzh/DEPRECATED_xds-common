@@ -108,3 +108,17 @@ func PathNormalize(p string) string {
 	res = strings.Replace(res, "\\", "/", -1)
 	return filepath.Clean(res)
 }
+
+// GetUserHome returns the user's home directory or empty string on error
+func GetUserHome() string {
+	if usr, err := user.Current(); err == nil && usr != nil && usr.HomeDir != "" {
+		return usr.HomeDir
+	}
+	for _, p := range []string{"HOME", "HomePath"} {
+		if h := os.Getenv(p); h != "" {
+			return h
+		}
+	}
+
+	return ""
+}
