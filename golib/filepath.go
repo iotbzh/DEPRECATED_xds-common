@@ -55,18 +55,7 @@ func ResolveEnvVar(s string) (string, error) {
 		val := ""
 		if v[1] == "EXEPATH" {
 			// Specific case to resolve $EXEPATH or ${EXEPATH} used as current executable path
-			exePath := os.Args[0]
-			ee, _ := os.Executable()
-			exeAbsPath, err := filepath.Abs(ee)
-			if err == nil {
-				exePath, err = filepath.EvalSymlinks(exeAbsPath)
-				if err == nil {
-					exePath = filepath.Dir(ee)
-				} else {
-					exePath = filepath.Dir(exeAbsPath)
-				}
-			}
-			val = exePath
+			val = GetExePath()
 
 		} else {
 			// Get env var value
@@ -121,4 +110,20 @@ func GetUserHome() string {
 	}
 
 	return ""
+}
+
+// GetExePath returns the full path of the current executable
+func GetExePath() string {
+	exePath := os.Args[0] // set fallback value
+	ee, _ := os.Executable()
+	exeAbsPath, err := filepath.Abs(ee)
+	if err == nil {
+		exePath, err = filepath.EvalSymlinks(exeAbsPath)
+		if err == nil {
+			exePath = filepath.Dir(ee)
+		} else {
+			exePath = filepath.Dir(exeAbsPath)
+		}
+	}
+	return exePath
 }
