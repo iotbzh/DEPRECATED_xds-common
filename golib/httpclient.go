@@ -20,6 +20,7 @@ type HTTPClient struct {
 	LoggerPrefix string
 
 	httpClient http.Client
+	initDone   bool
 	endpoint   string
 	apikey     string
 	username   string
@@ -67,6 +68,7 @@ func HTTPNewClient(baseURL string, cfg HTTPClientConfig) (*HTTPClient, error) {
 		LoggerPrefix: "",
 
 		httpClient: httpClient,
+		initDone:   false,
 		endpoint:   baseURL,
 		apikey:     cfg.Apikey,
 		conf:       cfg,
@@ -76,11 +78,11 @@ func HTTPNewClient(baseURL string, cfg HTTPClientConfig) (*HTTPClient, error) {
 		*/
 	}
 
-	if client.apikey == "" {
-		if err := client.getCidAndCsrf(); err != nil {
-			return nil, err
-		}
+	if err := client.getCidAndCsrf(); err != nil {
+		return &client, err
 	}
+
+	client.initDone = true
 	return &client, nil
 }
 
@@ -130,6 +132,10 @@ func (c *HTTPClient) log(level int, format string, args ...interface{}) {
 
 // Send request to retrieve Client id and/or CSRF token
 func (c *HTTPClient) getCidAndCsrf() error {
+	// Don't use cid + csrf when apikey is set
+	if c.apikey != "" {
+		return nil
+	}
 	request, err := http.NewRequest("GET", c.endpoint, nil)
 	if err != nil {
 		return err
@@ -172,6 +178,12 @@ func (c *HTTPClient) HTTPGet(url string, data *[]byte) error {
 
 // HTTPGetWithRes Send a Get request to client and return both response and error
 func (c *HTTPClient) HTTPGetWithRes(url string, data *[]byte) (*http.Response, error) {
+	if !c.initDone {
+		if err := c.getCidAndCsrf(); err == nil {
+			c.initDone = true
+		}
+	}
+
 	request, err := http.NewRequest("GET", c.formatURL(url), nil)
 	if err != nil {
 		return nil, err
@@ -197,6 +209,12 @@ func (c *HTTPClient) HTTPPost(url string, body string) error {
 
 // HTTPPostWithRes Send a POST request to client and return both response and error
 func (c *HTTPClient) HTTPPostWithRes(url string, body string) (*http.Response, error) {
+	if !c.initDone {
+		if err := c.getCidAndCsrf(); err == nil {
+			c.initDone = true
+		}
+	}
+
 	request, err := http.NewRequest("POST", c.formatURL(url), bytes.NewBufferString(body))
 	if err != nil {
 		return nil, err
