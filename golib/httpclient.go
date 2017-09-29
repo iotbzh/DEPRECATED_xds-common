@@ -37,8 +37,12 @@ type HTTPClientConfig struct {
 	Apikey              string
 	HeaderClientKeyName string
 	CsrfDisable         bool
+	LogOut              io.Writer
+	LogLevel            int
+	LogPrefix           string
 }
 
+// Logger levels constants
 const (
 	HTTPLogLevelPanic   = 0
 	HTTPLogLevelError   = 1
@@ -62,10 +66,15 @@ func HTTPNewClient(baseURL string, cfg HTTPClientConfig) (*HTTPClient, error) {
 			},
 		},
 	}
+
+	lOut := cfg.LogOut
+	if cfg.LogOut == nil {
+		lOut = os.Stdout
+	}
 	client := HTTPClient{
-		LoggerOut:    os.Stdout,
-		LoggerLevel:  HTTPLogLevelError,
-		LoggerPrefix: "",
+		LoggerOut:    lOut,
+		LoggerLevel:  cfg.LogLevel,
+		LoggerPrefix: cfg.LogPrefix,
 
 		httpClient: httpClient,
 		initDone:   false,
@@ -82,13 +91,19 @@ func HTTPNewClient(baseURL string, cfg HTTPClientConfig) (*HTTPClient, error) {
 		return &client, err
 	}
 
+	client.log(HTTPLogLevelDebug, "HTTP client url %s init Done", client.endpoint)
 	client.initDone = true
 	return &client, nil
 }
 
 // GetLogLevel Get a readable string representing the log level
 func (c *HTTPClient) GetLogLevel() string {
-	switch c.LoggerLevel {
+	return c.logLevelToString(c.LoggerLevel)
+}
+
+// logLevelToString Convert an integer log level to string
+func (c *HTTPClient) logLevelToString(lvl int) string {
+	switch lvl {
 	case HTTPLogLevelPanic:
 		return "panic"
 	case HTTPLogLevelError:
@@ -126,7 +141,7 @@ func (c *HTTPClient) log(level int, format string, args ...interface{}) {
 	if level > c.LoggerLevel {
 		return
 	}
-	sLvl := strings.ToUpper(c.GetLogLevel())
+	sLvl := strings.ToUpper(c.logLevelToString(level))
 	fmt.Fprintf(c.LoggerOut, sLvl+": "+c.LoggerPrefix+format+"\n", args...)
 }
 
