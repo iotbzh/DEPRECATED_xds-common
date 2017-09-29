@@ -272,10 +272,7 @@ func (c *HTTPClient) handleRequest(request *http.Request) (*http.Response, error
 	response, err := c.httpClient.Do(request)
 	c.log(HTTPLogLevelDebug, "HTTP RESPONSE: %v\n", response)
 	if err != nil {
-		if c.LoggerLevel != HTTPLogLevelDebug {
-			c.log(HTTPLogLevelError, "HTTP %s %v", request.Method, request.URL)
-			c.log(HTTPLogLevelError, "HTTP RESPONSE: %v\n", response)
-		}
+		c.log(HTTPLogLevelInfo, "%v", err)
 		return nil, err
 	}
 
