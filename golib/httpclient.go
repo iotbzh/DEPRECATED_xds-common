@@ -187,50 +187,64 @@ func (c *HTTPClient) formatURL(endURL string) string {
 
 // HTTPGet Send a Get request to client and return an error object
 func (c *HTTPClient) HTTPGet(url string, data *[]byte) error {
-	_, err := c.HTTPGetWithRes(url, data)
+	_, err := c._HTTPRequest("GET", url, nil, data)
 	return err
 }
 
 // HTTPGetWithRes Send a Get request to client and return both response and error
 func (c *HTTPClient) HTTPGetWithRes(url string, data *[]byte) (*http.Response, error) {
-	if !c.initDone {
-		if err := c.getCidAndCsrf(); err == nil {
-			c.initDone = true
-		}
-	}
-
-	request, err := http.NewRequest("GET", c.formatURL(url), nil)
-	if err != nil {
-		return nil, err
-	}
-	res, err := c.handleRequest(request)
-	if err != nil {
-		return res, err
-	}
-	if res.StatusCode != 200 {
-		return res, errors.New(res.Status)
-	}
-
-	*data = c.ResponseToBArray(res)
-
-	return res, nil
+	return c._HTTPRequest("GET", url, nil, data)
 }
 
 // HTTPPost Send a POST request to client and return an error object
 func (c *HTTPClient) HTTPPost(url string, body string) error {
-	_, err := c.HTTPPostWithRes(url, body)
+	_, err := c._HTTPRequest("POST", url, &body, nil)
 	return err
 }
 
 // HTTPPostWithRes Send a POST request to client and return both response and error
 func (c *HTTPClient) HTTPPostWithRes(url string, body string) (*http.Response, error) {
+	return c._HTTPRequest("POST", url, &body, nil)
+}
+
+// HTTPPut Send a PUT request to client and return an error object
+func (c *HTTPClient) HTTPPut(url string, body string) error {
+	_, err := c._HTTPRequest("PUT", url, &body, nil)
+	return err
+}
+
+// HTTPPutWithRes Send a PUT request to client and return both response and error
+func (c *HTTPClient) HTTPPutWithRes(url string, body string) (*http.Response, error) {
+	return c._HTTPRequest("PUT", url, &body, nil)
+}
+
+// HTTPDelete Send a DELETE request to client and return an error object
+func (c *HTTPClient) HTTPDelete(url string) error {
+	_, err := c._HTTPRequest("DELETE", url, nil, nil)
+	return err
+}
+
+// HTTPDeleteWithRes Send a DELETE request to client and return both response and error
+func (c *HTTPClient) HTTPDeleteWithRes(url string) (*http.Response, error) {
+	return c._HTTPRequest("DELETE", url, nil, nil)
+}
+
+// _HTTPRequest Generic function that returns a new Request given a method, URL, and optional body and data.
+func (c *HTTPClient) _HTTPRequest(method, url string, body *string, data *[]byte) (*http.Response, error) {
 	if !c.initDone {
 		if err := c.getCidAndCsrf(); err == nil {
 			c.initDone = true
 		}
 	}
 
-	request, err := http.NewRequest("POST", c.formatURL(url), bytes.NewBufferString(body))
+	var err error
+	var request *http.Request
+	if body != nil {
+		request, err = http.NewRequest(method, c.formatURL(url), bytes.NewBufferString(*body))
+	} else {
+		request, err = http.NewRequest(method, c.formatURL(url), nil)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -241,6 +255,11 @@ func (c *HTTPClient) HTTPPostWithRes(url string, body string) (*http.Response, e
 	if res.StatusCode != 200 {
 		return res, errors.New(res.Status)
 	}
+
+	if data != nil {
+		*data = c.ResponseToBArray(res)
+	}
+
 	return res, nil
 }
 
