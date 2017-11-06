@@ -98,11 +98,11 @@ func HTTPNewClient(baseURL string, cfg HTTPClientConfig) (*HTTPClient, error) {
 
 // GetLogLevel Get a readable string representing the log level
 func (c *HTTPClient) GetLogLevel() string {
-	return c.logLevelToString(c.LoggerLevel)
+	return c.LogLevelToString(c.LoggerLevel)
 }
 
-// logLevelToString Convert an integer log level to string
-func (c *HTTPClient) logLevelToString(lvl int) string {
+// LogLevelToString Convert an integer log level to string
+func (c *HTTPClient) LogLevelToString(lvl int) string {
 	switch lvl {
 	case HTTPLogLevelPanic:
 		return "panic"
@@ -137,53 +137,38 @@ func (c *HTTPClient) SetLogLevel(lvl string) error {
 	return nil
 }
 
-func (c *HTTPClient) log(level int, format string, args ...interface{}) {
-	if level > c.LoggerLevel {
-		return
-	}
-	sLvl := strings.ToUpper(c.logLevelToString(level))
-	fmt.Fprintf(c.LoggerOut, sLvl+": "+c.LoggerPrefix+format+"\n", args...)
-}
-
-// Send request to retrieve Client id and/or CSRF token
-func (c *HTTPClient) getCidAndCsrf() error {
-	// Don't use cid + csrf when apikey is set
-	if c.apikey != "" {
-		return nil
-	}
-	request, err := http.NewRequest("GET", c.endpoint, nil)
-	if err != nil {
-		return err
-	}
-	if _, err := c.handleRequest(request); err != nil {
-		return err
-	}
-	if c.id == "" {
-		return errors.New("Failed to get device ID")
-	}
-	if !c.conf.CsrfDisable && c.csrf == "" {
-		return errors.New("Failed to get CSRF token")
-	}
-	return nil
-}
-
 // GetClientID returns the id
 func (c *HTTPClient) GetClientID() string {
 	return c.id
 }
 
-// formatURL Build full url by concatenating all parts
-func (c *HTTPClient) formatURL(endURL string) string {
-	url := c.endpoint
-	if !strings.HasSuffix(url, "/") {
-		url += "/"
-	}
-	url += strings.TrimLeft(c.conf.URLPrefix, "/")
-	if !strings.HasSuffix(url, "/") {
-		url += "/"
-	}
-	return url + strings.TrimLeft(endURL, "/")
+/***
+** High level functions
+***/
+
+// Get Send a Get request to client and return directly data of body response
+func (c *HTTPClient) Get(url string, out interface{}) error {
+	return c._Request("GET", url, nil, out)
 }
+
+// Post Send a Post request to client and return directly data of body response
+func (c *HTTPClient) Post(url string, in interface{}, out interface{}) error {
+	return c._Request("POST", url, in, out)
+}
+
+// Put Send a Put request to client and return directly data of body response
+func (c *HTTPClient) Put(url string, out interface{}) error {
+	return c._Request("PUT", url, nil, out)
+}
+
+// Delete Send a Delete request to client and return directly data of body response
+func (c *HTTPClient) Delete(url string, out interface{}) error {
+	return c._Request("DELETE", url, nil, out)
+}
+
+/***
+** Low level functions
+***/
 
 // HTTPGet Send a Get request to client and return an error object
 func (c *HTTPClient) HTTPGet(url string, data *[]byte) error {
@@ -229,6 +214,49 @@ func (c *HTTPClient) HTTPDeleteWithRes(url string) (*http.Response, error) {
 	return c._HTTPRequest("DELETE", url, nil, nil)
 }
 
+// ResponseToBArray converts an Http response to a byte array
+func (c *HTTPClient) ResponseToBArray(response *http.Response) []byte {
+	defer response.Body.Close()
+	bytes, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		c.log(HTTPLogLevelError, "ResponseToBArray failure: %v", err.Error())
+	}
+	return bytes
+}
+
+/***
+** Private functions
+***/
+
+// _HTTPRequest Generic function used by high level function to send requests
+func (c *HTTPClient) _Request(method string, url string, in interface{}, out interface{}) error {
+	var err error
+	var res *http.Response
+	var body []byte
+	if in != nil {
+		body, err = json.Marshal(in)
+		if err != nil {
+			return err
+		}
+		sb := string(body)
+		res, err = c._HTTPRequest(method, url, &sb, nil)
+	} else {
+		res, err = c._HTTPRequest(method, url, nil, nil)
+	}
+	if err != nil {
+		return err
+	}
+	if res.StatusCode != 200 {
+		return fmt.Errorf("HTTP status %s", res.Status)
+	}
+
+	// Don't decode response if no out data pointer is nil
+	if out == nil {
+		return nil
+	}
+	return json.Unmarshal(c.ResponseToBArray(res), out)
+}
+
 // _HTTPRequest Generic function that returns a new Request given a method, URL, and optional body and data.
 func (c *HTTPClient) _HTTPRequest(method, url string, body *string, data *[]byte) (*http.Response, error) {
 	if !c.initDone {
@@ -261,16 +289,6 @@ func (c *HTTPClient) _HTTPRequest(method, url string, body *string, data *[]byte
 	}
 
 	return res, nil
-}
-
-// ResponseToBArray converts an Http response to a byte array
-func (c *HTTPClient) ResponseToBArray(response *http.Response) []byte {
-	defer response.Body.Close()
-	bytes, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		c.log(HTTPLogLevelError, "ResponseToBArray failure: %v", err.Error())
-	}
-	return bytes
 }
 
 func (c *HTTPClient) handleRequest(request *http.Request) (*http.Response, error) {
@@ -336,4 +354,48 @@ csrffound:
 		return nil, errors.New("Unknown HTTP status returned: " + response.Status)
 	}
 	return response, nil
+}
+
+// formatURL Build full url by concatenating all parts
+func (c *HTTPClient) formatURL(endURL string) string {
+	url := c.endpoint
+	if !strings.HasSuffix(url, "/") {
+		url += "/"
+	}
+	url += strings.TrimLeft(c.conf.URLPrefix, "/")
+	if !strings.HasSuffix(url, "/") {
+		url += "/"
+	}
+	return url + strings.TrimLeft(endURL, "/")
+}
+
+// Send request to retrieve Client id and/or CSRF token
+func (c *HTTPClient) getCidAndCsrf() error {
+	// Don't use cid + csrf when apikey is set
+	if c.apikey != "" {
+		return nil
+	}
+	request, err := http.NewRequest("GET", c.endpoint, nil)
+	if err != nil {
+		return err
+	}
+	if _, err := c.handleRequest(request); err != nil {
+		return err
+	}
+	if c.id == "" {
+		return errors.New("Failed to get device ID")
+	}
+	if !c.conf.CsrfDisable && c.csrf == "" {
+		return errors.New("Failed to get CSRF token")
+	}
+	return nil
+}
+
+// log Internal logger function
+func (c *HTTPClient) log(level int, format string, args ...interface{}) {
+	if level > c.LoggerLevel {
+		return
+	}
+	sLvl := strings.ToUpper(c.LogLevelToString(level))
+	fmt.Fprintf(c.LoggerOut, sLvl+": "+c.LoggerPrefix+format+"\n", args...)
 }
