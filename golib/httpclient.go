@@ -157,8 +157,8 @@ func (c *HTTPClient) Post(url string, in interface{}, out interface{}) error {
 }
 
 // Put Send a Put request to client and return directly data of body response
-func (c *HTTPClient) Put(url string, out interface{}) error {
-	return c._Request("PUT", url, nil, out)
+func (c *HTTPClient) Put(url string, in interface{}, out interface{}) error {
+	return c._Request("PUT", url, in, out)
 }
 
 // Delete Send a Delete request to client and return directly data of body response
