@@ -25,7 +25,7 @@ func (e *ExecOverWS) cmdPumpStdout(r io.Reader, done chan struct{}) {
 		e.OutputCB(e, sc.Text(), "")
 	}
 	if sc.Err() != nil {
-		e.logError("stdout scan:", sc.Err())
+		e.logError("stdout scan: %v", sc.Err())
 	}
 
 	close(done)
@@ -42,6 +42,6 @@ func (e *ExecOverWS) cmdPumpStderr(r io.Reader) {
 		e.OutputCB(e, "", sc.Text())
 	}
 	if sc.Err() != nil {
-		e.logError("stderr scan:", sc.Err())
+		e.logError("stderr scan: %v", sc.Err())
 	}
 }
