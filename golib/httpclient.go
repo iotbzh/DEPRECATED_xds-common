@@ -88,6 +88,7 @@ func HTTPNewClient(baseURL string, cfg HTTPClientConfig) (*HTTPClient, error) {
 	}
 
 	if err := client.getCidAndCsrf(); err != nil {
+		client.log(HTTPLogLevelError, "Cannot retrieve Client ID and/or CSRF: %v", err)
 		return &client, err
 	}
 
