@@ -20,6 +20,16 @@ type EmitOutputCB func(e *ExecOverWS, stdout, stderr string)
 // EmitExitCB is the function callback used to emit exit proc code
 type EmitExitCB func(e *ExecOverWS, code int, err error)
 
+// SplitType Type of spliting method to tokenize stdout/stderr
+type SplitType uint8
+
+const (
+	// SplitLine Split line by line
+	SplitLine SplitType = iota
+	// SplitChar Split character by character
+	SplitChar
+)
+
 // Inspired by :
 // https://github.com/gorilla/websocket/blob/master/examples/command/main.go
 
@@ -40,6 +50,7 @@ type ExecOverWS struct {
 	OutputCB       EmitOutputCB            // stdout/stderr callback
 	ExitCB         EmitExitCB              // exit proc callback
 	UserData       *map[string]interface{} // user data passed to callbacks
+	OutSplit       SplitType               // split method to tokenize stdout/stderr
 
 	// Private fields
 	proc *os.Process
@@ -56,7 +67,8 @@ func New(cmd string, args []string, so *socketio.Socket, soID, cmdID string) *Ex
 		SocketIO:       so,
 		Sid:            soID,
 		CmdID:          cmdID,
-		CmdExecTimeout: -1, // default no timeout
+		CmdExecTimeout: -1,        // default no timeout
+		OutSplit:       SplitChar, // default split by character
 	}
 
 	cmdIDMap[cmdID] = e

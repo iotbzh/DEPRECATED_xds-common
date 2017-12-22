@@ -3,9 +3,10 @@ package eows
 import (
 	"bufio"
 	"io"
+	"strings"
 )
 
-// scanBlocks
+// scanBlocks - gain character by character (or as soon as one or more characters are available)
 func scanBlocks(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	if atEOF && len(data) == 0 {
 		return 0, nil, nil
@@ -20,7 +21,12 @@ func (e *ExecOverWS) cmdPumpStdout(r io.Reader, done chan struct{}) {
 	}()
 
 	sc := bufio.NewScanner(r)
+
+	// else use default sc.ScanLines
+	if e.OutSplit == SplitChar {
 	sc.Split(scanBlocks)
+	}
+
 	for sc.Scan() {
 		e.OutputCB(e, sc.Text(), "")
 	}
@@ -37,7 +43,12 @@ func (e *ExecOverWS) cmdPumpStderr(r io.Reader) {
 	defer func() {
 	}()
 	sc := bufio.NewScanner(r)
+
+	// else use default sc.ScanLines
+	if e.OutSplit == SplitChar {
 	sc.Split(scanBlocks)
+	}
+
 	for sc.Scan() {
 		e.OutputCB(e, "", sc.Text())
 	}
