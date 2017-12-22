@@ -24,13 +24,13 @@ func (e *ExecOverWS) cmdPumpStdout(r io.Reader, done chan struct{}) {
 
 	// else use default sc.ScanLines
 	if e.OutSplit == SplitChar {
-	sc.Split(scanBlocks)
+		sc.Split(scanBlocks)
 	}
 
 	for sc.Scan() {
 		e.OutputCB(e, sc.Text(), "")
 	}
-	if sc.Err() != nil {
+	if sc.Err() != nil && !strings.Contains(sc.Err().Error(), "file already closed") {
 		e.logError("stdout scan: %v", sc.Err())
 	}
 
@@ -46,13 +46,13 @@ func (e *ExecOverWS) cmdPumpStderr(r io.Reader) {
 
 	// else use default sc.ScanLines
 	if e.OutSplit == SplitChar {
-	sc.Split(scanBlocks)
+		sc.Split(scanBlocks)
 	}
 
 	for sc.Scan() {
 		e.OutputCB(e, "", sc.Text())
 	}
-	if sc.Err() != nil {
+	if sc.Err() != nil && !strings.Contains(sc.Err().Error(), "file already closed") {
 		e.logError("stderr scan: %v", sc.Err())
 	}
 }

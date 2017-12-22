@@ -43,6 +43,6 @@ func (e *ExecOverWS) Signal(signal string) error {
 		return fmt.Errorf("Cannot retrieve process")
 	}
 
-	fmt.Printf("SEND signal %v to proc %v\n", sig, e.proc.Pid)
+	e.logDebug("SEND signal %v to proc %v", sig, e.proc.Pid)
 	return e.proc.Signal(sig)
 }
